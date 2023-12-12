@@ -276,7 +276,7 @@ class SRTConverter:
             with open(filename, "w", encoding="utf-8") as file:
                 file.write(srt_string)
         else:
-            print("Invalid SRT string")
+            Exception("Invalid SRT string")
 
     @staticmethod
     def is_valid_srt_string(srt_string):
