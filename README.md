@@ -132,3 +132,32 @@ segment_array_2 = [
 converter = SRTConverter.initialize_with_normalized_timestamps([segment_array_1, segment_array_2])
 
 # Now the converter.segments will have a continuous timeline combining segment_array_1 and segment_array_2
+
+```
+
+### Usage Ex. using WhisperX API
+
+https://github.com/m-bain/whisperX?tab=readme-ov-file#python-usage--
+
+```python
+# 1. Transcribe with original whisper (batched)
+model = whisperx.load_model("large-v2", device, compute_type=compute_type)
+
+audio = whisperx.load_audio(audio_file)
+result = model.transcribe(audio, batch_size=batch_size)
+print(result["segments"]) # before alignment
+
+# delete model if low on GPU resources
+# import gc; gc.collect(); torch.cuda.empty_cache(); del model
+
+# 2. Align whisper output
+model_a, metadata = whisperx.load_align_model(language_code=result["language"], device=device)
+result = whisperx.align(result["segments"], model_a, metadata, audio, device, return_char_alignments=False)
+
+print(result["segments"]) # after alignment
+
+# 3. Initialize SRTConverter and generate SRT to highlight words
+converter = SRTConverter(result["segments"])
+highlighted_srt = converter.to_srt_highlight_word(color="red")
+SRTConverter.write_to_file("output.srt", highlighted_srt)
+```
