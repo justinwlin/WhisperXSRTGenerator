@@ -116,6 +116,10 @@ By normalizing timestamps, this method ensures that each segment follows sequent
 
 - `SRTConverter`: An initialized instance of `SRTConverter` with segments that have normalized timestamps.
 
+NOTE NEED TO FIX. IMPLEMENTATION IS WRONG.
+
+I assumed the last transcription time from A would be the end time of the audio, but that is not true. I need to check the actual audio lengths.
+
 ### Usage Example
 
 ```python
