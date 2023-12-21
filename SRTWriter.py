@@ -296,13 +296,15 @@ class SRTConverter:
             return False
         
     @staticmethod
-    def initialize_with_normalized_timestamps(segment_arrays):
+    def initialize_with_normalized_timestamps(segment_arrays, audio_lengths):
         """
-        Initializes the SRTConverter with multiple arrays of segments, normalizing their timestamps. This is helpful
-        if you had transcribed a long audio file in multiple parts, and want to combine the segments into one SRT file.
+        Initializes the SRTConverter with multiple arrays of segments, normalizing their timestamps based on actual
+        audio lengths. This is helpful if you had transcribed a long audio file in multiple parts, and want to combine
+        the segments into one SRT file, considering actual audio segment lengths.
 
         Parameters:
             segment_arrays (list of lists): A list containing arrays of segment dictionaries.
+            audio_lengths (list): A list containing the lengths of each audio segment in seconds.
 
         Returns:
             SRTConverter: An initialized SRTConverter object with normalized segments.
@@ -310,13 +312,12 @@ class SRTConverter:
         normalized_segments = []
         total_elapsed_time = 0.0
 
-        for segments in segment_arrays:
+        for index, segments in enumerate(segment_arrays):
             if not segments:
                 continue
 
-            # Calculate the time offset for the current array of segments
-            first_segment_start = segments[0]["start"]
-            time_offset = total_elapsed_time - first_segment_start
+            # Use the actual audio segment length to calculate the time offset
+            time_offset = total_elapsed_time - segments[0]["start"]
 
             for segment in segments:
                 # Normalize start and end times
@@ -329,8 +330,9 @@ class SRTConverter:
 
                 normalized_segments.append(segment)
 
-            # Update total elapsed time for the next iteration
-            total_elapsed_time = normalized_segments[-1]["end"]
+            # Update total elapsed time using the actual length of the audio segment
+            if index < len(audio_lengths):
+                total_elapsed_time += audio_lengths[index]
 
         # Create an SRTConverter instance with the normalized segments
         return SRTConverter(normalized_segments)

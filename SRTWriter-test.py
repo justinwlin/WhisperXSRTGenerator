@@ -178,7 +178,10 @@ class TestSRTConverter(unittest.TestCase):
             {"start": 2.0, "end": 4.0, "text": "Segment 4", "words": [{"word": "Segment", "start": 2.0, "end": 3.0}, {"word": "4", "start": 3.0, "end": 4.0}]}
         ]
 
-        converter = SRTConverter.initialize_with_normalized_timestamps([segment_array_1, segment_array_2])
+        # Assuming the lengths of the audio segments are 4 seconds and 6 seconds respectively
+        audio_lengths = [4, 6]
+
+        converter = SRTConverter.initialize_with_normalized_timestamps([segment_array_1, segment_array_2], audio_lengths)
 
         # Check if the number of segments is correct
         self.assertEqual(len(converter.segments), 4)
@@ -187,15 +190,16 @@ class TestSRTConverter(unittest.TestCase):
         self.assertEqual(converter.segments[2]["start"], 4.0)
         self.assertEqual(converter.segments[2]["end"], 6.0)
         self.assertEqual(converter.segments[3]["start"], 6.0)
-        self.assertEqual(converter.segments[3]["end"], 8.0)
+        self.assertEqual(converter.segments[3]["end"], 8.0)  # Corrected expectation
 
         # Check if words in the segments have normalized timestamps
         for word in converter.segments[2]["words"]:
-            self.assertTrue(4.0 <= word["start"] <= 6.0)
+            self.assertTrue(4.0 <= word["start"] < 6.0)
             self.assertTrue(4.0 <= word["end"] <= 6.0)
         for word in converter.segments[3]["words"]:
-            self.assertTrue(6.0 <= word["start"] <= 8.0)
-            self.assertTrue(6.0 <= word["end"] <= 8.0)
+            self.assertTrue(6.0 <= word["start"] < 8.0)  # Corrected expectation
+            self.assertTrue(6.0 <= word["end"] <= 8.0)   # Corrected expectation
+
 
 if __name__ == "__main__":
     unittest.main()
