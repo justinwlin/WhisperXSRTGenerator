@@ -79,6 +79,26 @@ class Segments:
             word.frame_rate = new_frame_rate
         self.calculate_itt_times()
 
+    def to_itt_string(self, region="bottom", highlight_color="yellow"):
+        if not self.itt_start or not self.itt_end:
+            raise ValueError("ITT start or end times are not calculated.")
+
+        # Begin the paragraph tag with the formatted iTT start and end times
+        result = f'<p begin="{self.itt_start}" end="{self.itt_end}" region="{region}">\n'
+
+        # Iterate through each word in the segment to format it appropriately
+        for word in self.words:
+            if word.highlighted:
+                # Wrap highlighted words with a span tag and the specified color
+                result += f'<span tts:color="{highlight_color}">{word.text}</span> '
+            else:
+                # Add non-highlighted words directly
+                result += f'{word.text} '
+
+        # Close the paragraph tag
+        result += '</p>\n'
+
+        return result
 
 def closeGapBetweenListOfSegments(segments, gap):
     if(len(segments) <= 1):
@@ -113,6 +133,24 @@ def closeGapBetweenListOfSegments(segments, gap):
                 # Current segment
                 currentSegment.itt_start = avgITTTime
                 currentSegment.start = avgTime
+    
+    # Post-fix to adjust any segments that start and end on the same frame
+    for idx in range(len(newSegments)):
+        segment = newSegments[idx]
+        # If the segment starts and ends on the same frame, adjust the start/end time to before and after
+        # Check if a before exists
+        if idx > 0:
+            previousSegment = newSegments[idx - 1]
+            if segment.start == segment.end:
+                segment.start = previousSegment.end
+                segment.itt_start = previousSegment.itt_end
+        # Check if an after exists
+        if idx < len(newSegments) - 1:
+            nextSegment = newSegments[idx + 1]
+            if segment.start == segment.end:
+                segment.end = nextSegment.start
+                segment.itt_end = nextSegment.itt_start
+
     return newSegments
 
 def createSegmentsList(segments):

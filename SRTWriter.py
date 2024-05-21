@@ -3,6 +3,7 @@ import srt
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 
+from WhisperXSRTGenerator.iTTGenerator import ITTGenerator
 from WhisperXSRTGenerator.segments import Word, closeGapBetweenListOfSegments, createSegmentsList, generateFlattenedSegments, updateFrameRateForSegments
 
 class SRTConverter:
@@ -383,9 +384,9 @@ class SRTConverter:
         # Create an SRTConverter instance with the normalized segments
         return SRTConverter(normalized_segments)
     
-    def to_itt_highlight_word(self, color="red", gap=1, frame_rate=24):
+    def to_itt_highlight_word(self, color="yellow", gap=1, frame_rate=24):
         """
-        Generates an ITT (IMSC1 Text and Image Profile) formatted string with specific words highlighted.
+        Generates an ITT caption with highlighted words in the specified color
         """
         # Parse into a Segment / Word Class
         segmentClassList = createSegmentsList(self.segments)
@@ -397,5 +398,11 @@ class SRTConverter:
 
         subsegments = closeGapBetweenListOfSegments(subsegments, gap)
 
-        for segment in subsegments:
-            print(segment.itt_start, segment.itt_end, segment.text)
+        # Create the ITT generator
+        itt_gen = ITTGenerator()
+        itt_gen.set_highlight_color(color)
+        itt_gen.set_frame_rate(frame_rate=frame_rate, frame_rate_multiplier="1000 1000")
+        itt_gen.set_caption_region("bottom", "after", "80% 10%", "10% 90%", "lrtb")
+        itt_gen.set_text_style(color="white", fontFamily="Arial", fontSize="150%", fontStyle="normal", fontWeight="bold")
+        itt_gen.setSegments(subsegments)
+        itt_gen.write_xml("example.itt")
