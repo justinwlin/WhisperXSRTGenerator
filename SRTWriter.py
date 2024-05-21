@@ -3,6 +3,8 @@ import srt
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 
+from WhisperXSRTGenerator.segments import createSegmentsList
+
 class SRTConverter:
     """
     A class to convert and manipulate segments from a WhisperX transcription into SRT (SubRip Text) format.
@@ -124,15 +126,6 @@ class SRTConverter:
         self.segments = new_segments
 
         return new_segments
-    
-    @staticmethod
-    def format_time_itt(time_in_seconds):
-        hours, remainder = divmod(time_in_seconds, 3600)
-        minutes, seconds = divmod(remainder, 60)
-        milliseconds = int((seconds - int(seconds)) * 1000)
-        return f"{int(hours):02d}:{int(minutes):02d}:{int(seconds):02d}.{milliseconds:03d}"
-
-    def to_itt_highlight_word(self, color="yellow"):
         """
         Starts the process to convert an SRT formatted string with highlighted words into a TTML formatted string.
         
@@ -434,3 +427,16 @@ class SRTConverter:
 
         # Create an SRTConverter instance with the normalized segments
         return SRTConverter(normalized_segments)
+    
+    def to_itt_highlight_word(self, color="red", gap=1, frame_rate=24):
+        """
+        Generates an ITT (IMSC1 Text and Image Profile) formatted string with specific words highlighted.
+        """
+        # Parse into a Segment / Word Class
+        segmentClassList = createSegmentsList(self.segments)
+
+        # Define the framerate matches 
+
+        # Have the right heading
+
+        # Apply stying
