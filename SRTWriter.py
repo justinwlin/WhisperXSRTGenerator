@@ -3,7 +3,7 @@ import srt
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 
-from WhisperXSRTGenerator.segments import createSegmentsList
+from WhisperXSRTGenerator.segments import Word, closeGapBetweenListOfSegments, createSegmentsList, generateFlattenedSegments, updateFrameRateForSegments
 
 class SRTConverter:
     """
@@ -126,51 +126,6 @@ class SRTConverter:
         self.segments = new_segments
 
         return new_segments
-        """
-        Starts the process to convert an SRT formatted string with highlighted words into a TTML formatted string.
-        
-        Parameters:
-            color (str): The color used for highlighting words in TTML. Default is "yellow".
-        
-        Returns:
-            str: A string formatted in TTML format with only headers and an empty paragraph.
-        """
-        srt_string = self.to_srt_highlight_word(color)  # This would generate your SRT with "font" tags
-
-        # Define namespaces and create root element
-        ET.register_namespace('', "http://www.w3.org/ns/ttml")
-        ET.register_namespace('tts', "http://www.w3.org/ns/ttml#styling")
-        root = ET.Element("{http://www.w3.org/ns/ttml}tt", attrib={"xml:lang": "en"})
-        
-        head = ET.SubElement(root, "head")
-        styling = ET.SubElement(head, "styling")
-        style = ET.SubElement(styling, "style", attrib={"xml:id": "highlight", "{http://www.w3.org/ns/ttml#styling}color": color})
-
-        body = ET.SubElement(root, "body")
-        div = ET.SubElement(body, "div")
-
-        # Parse the SRT string
-        entries = srt_string.strip().split('\n\n')
-        for entry in entries:
-            lines = entry.split('\n')
-            if len(lines) < 3:
-                continue
-
-            # Extract timing and text
-            timing = lines[1]
-            text = lines[2]
-            start, end = timing.replace(" ", "").split('-->')
-            start = start.replace(',', '.')
-            end = end.replace(',', '.')
-
-            # Create paragraph element
-            p = ET.SubElement(div, "p", attrib={"begin": start, "end": end})
-            self.process_text_with_spans(p, text, color)
-
-        # Pretty print the XML
-        xml_str = ET.tostring(root, 'utf-8')
-        reparsed = minidom.parseString(xml_str)
-        return reparsed.toprettyxml(indent="  ")
 
     def process_text_with_spans(self, parent_element, text, color):
         """
@@ -435,8 +390,12 @@ class SRTConverter:
         # Parse into a Segment / Word Class
         segmentClassList = createSegmentsList(self.segments)
 
-        # Define the framerate matches 
+        # Generate the subsegments for the list
+        subsegments = generateFlattenedSegments(segmentClassList)
 
-        # Have the right heading
+        subsegments = updateFrameRateForSegments(subsegments, frame_rate)
 
-        # Apply stying
+        subsegments = closeGapBetweenListOfSegments(subsegments, gap)
+
+        for segment in subsegments:
+            print(segment.itt_start, segment.itt_end, segment.text)
