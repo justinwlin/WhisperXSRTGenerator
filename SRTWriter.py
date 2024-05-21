@@ -1,4 +1,7 @@
+import re
 import srt
+import xml.etree.ElementTree as ET
+from xml.dom import minidom
 
 class SRTConverter:
     """
@@ -42,8 +45,7 @@ class SRTConverter:
         ]
         """
 
-        self.segments = self.correct_missing_times(segments)
-        
+        self.segments = self.correct_missing_times(segments)        
         if original_text is not None:
             self.original_text = original_text
         else:
@@ -52,6 +54,7 @@ class SRTConverter:
                 if isinstance(segment, dict) and 'text' in segment:
                     texts.append(segment['text'])
             self.original_text = " ".join(texts)
+    
 
     def correct_missing_times(self, segments):
         """
@@ -87,7 +90,6 @@ class SRTConverter:
                 word_segments.extend(segment['words'])
         return word_segments
 
-
     def adjust_word_per_segment(self, words_per_segment=5):
         """
         Adjusts the number of words per segment in the word segments.
@@ -118,9 +120,100 @@ class SRTConverter:
             }
             new_segments.append(segment)
 
+
         self.segments = new_segments
+
         return new_segments
     
+    @staticmethod
+    def format_time_itt(time_in_seconds):
+        hours, remainder = divmod(time_in_seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        milliseconds = int((seconds - int(seconds)) * 1000)
+        return f"{int(hours):02d}:{int(minutes):02d}:{int(seconds):02d}.{milliseconds:03d}"
+
+    def to_itt_highlight_word(self, color="yellow"):
+        """
+        Starts the process to convert an SRT formatted string with highlighted words into a TTML formatted string.
+        
+        Parameters:
+            color (str): The color used for highlighting words in TTML. Default is "yellow".
+        
+        Returns:
+            str: A string formatted in TTML format with only headers and an empty paragraph.
+        """
+        srt_string = self.to_srt_highlight_word(color)  # This would generate your SRT with "font" tags
+
+        # Define namespaces and create root element
+        ET.register_namespace('', "http://www.w3.org/ns/ttml")
+        ET.register_namespace('tts', "http://www.w3.org/ns/ttml#styling")
+        root = ET.Element("{http://www.w3.org/ns/ttml}tt", attrib={"xml:lang": "en"})
+        
+        head = ET.SubElement(root, "head")
+        styling = ET.SubElement(head, "styling")
+        style = ET.SubElement(styling, "style", attrib={"xml:id": "highlight", "{http://www.w3.org/ns/ttml#styling}color": color})
+
+        body = ET.SubElement(root, "body")
+        div = ET.SubElement(body, "div")
+
+        # Parse the SRT string
+        entries = srt_string.strip().split('\n\n')
+        for entry in entries:
+            lines = entry.split('\n')
+            if len(lines) < 3:
+                continue
+
+            # Extract timing and text
+            timing = lines[1]
+            text = lines[2]
+            start, end = timing.replace(" ", "").split('-->')
+            start = start.replace(',', '.')
+            end = end.replace(',', '.')
+
+            # Create paragraph element
+            p = ET.SubElement(div, "p", attrib={"begin": start, "end": end})
+            self.process_text_with_spans(p, text, color)
+
+        # Pretty print the XML
+        xml_str = ET.tostring(root, 'utf-8')
+        reparsed = minidom.parseString(xml_str)
+        return reparsed.toprettyxml(indent="  ")
+
+    def process_text_with_spans(self, parent_element, text, color):
+        """
+        Process text containing HTML-like font tags to TTML-compliant span tags.
+
+        Parameters:
+            parent_element (Element): The XML element to which the processed text will be appended.
+            text (str): The text containing font tags to be converted.
+            color (str): The color to use for the highlight in TTML format.
+        """
+        last_pos = 0
+        for match in re.finditer(r'<font color="yellow">(.*?)</font>', text):
+            start, end = match.span()
+            # Append text before the span directly to parent_element.text or tail
+            if start > last_pos:
+                if parent_element.text is None:
+                    parent_element.text = text[last_pos:start]
+                else:
+                    # Append to the tail of the last child
+                    if len(parent_element):
+                        parent_element[-1].tail = (parent_element[-1].tail or "") + text[last_pos:start]
+                    else:
+                        parent_element.text += text[last_pos:start]
+
+            # Create span for highlighted text
+            span = ET.SubElement(parent_element, "span", attrib={"{http://www.w3.org/ns/ttml#styling}color": color})
+            span.text = match.group(1)
+            last_pos = end
+
+        # Append any remaining text after the last match directly to tail
+        if last_pos < len(text):
+            if len(parent_element):
+                parent_element[-1].tail = (parent_element[-1].tail or "") + text[last_pos:]
+            else:
+                parent_element.text = (parent_element.text or "") + text[last_pos:]
+
     def to_srt_highlight_word(self, color="red"):
         """
         Generates an SRT (SubRip Subtitle) formatted string with specific words highlighted.
@@ -129,6 +222,8 @@ class SRTConverter:
 
         Parameters:
             color (str): The color used for highlighting words. Default is "red".
+            less than or equal to this value, the end time of the first caption will be adjusted to match the start time of the second caption to prevent
+            flickering of captions
 
         Returns:
             str: A string formatted in SRT format with highlighted words.
@@ -152,8 +247,6 @@ class SRTConverter:
                 entry_index += 1
 
         return '\n'.join(srt_data)
-
-
 
     def to_srt_single_words(self):
         """
@@ -261,7 +354,6 @@ class SRTConverter:
 
         return new_segments
 
-    
     @staticmethod
     def format_time(time_in_seconds):
         hours, remainder = divmod(time_in_seconds, 3600)
@@ -271,12 +363,18 @@ class SRTConverter:
 
     @staticmethod
     def write_to_file(filename, srt_string):
-        isValid = SRTConverter.is_valid_srt_string(srt_string)
-        if isValid:
+        try:
             with open(filename, "w", encoding="utf-8") as file:
                 file.write(srt_string)
-        else:
+        except:
             Exception("Invalid SRT string")
+
+    @staticmethod
+    def prettify_xml(element):
+        """Return a pretty-printed XML string for the Element."""
+        rough_string = ET.tostring(element, 'utf-8')
+        reparsed = minidom.parseString(rough_string)
+        return reparsed.toprettyxml(indent="  ")
 
     @staticmethod
     def is_valid_srt_string(srt_string):
