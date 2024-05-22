@@ -403,6 +403,6 @@ class SRTConverter:
         itt_gen.set_highlight_color(color)
         itt_gen.set_frame_rate(frame_rate=frame_rate, frame_rate_multiplier="1000 1000")
         itt_gen.set_caption_region("bottom", "after", "80% 10%", "10% 90%", "lrtb")
-        itt_gen.set_text_style(color="white", fontFamily="Arial", fontSize="150%", fontStyle="normal", fontWeight="bold")
+        itt_gen.set_text_style(color="white", fontFamily="Arial", fontSize="300%", fontStyle="normal", fontWeight="bold")
         itt_gen.setSegments(subsegments)
         itt_gen.write_xml("example.itt")
